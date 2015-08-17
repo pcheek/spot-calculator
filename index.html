@@ -40,6 +40,7 @@ html, body {
 .content {
   width: 50%;
   margin: 0 auto;
+  padding: 50px;
   display: table-cell;
   text-align: center;
   vertical-align: middle;
@@ -56,7 +57,8 @@ html, body {
 }
 
 #autocomplete {
-  width: 50%;
+  width: 300px;
+  max-width: 100%;
   padding: 25px;
   border: none;
   -webkit-border-radius: 50px;
@@ -72,7 +74,8 @@ html, body {
 }
 
 #call-to-action-button {
-  width: 50%;
+  width: 300px;
+  max-width: 100%;
   padding: 20px;
   padding-left: 50px;
   padding-right: 50px;
@@ -92,6 +95,19 @@ html, body {
     background: rgba(255, 255, 255, 0.85);
   }
 
+@media screen and (max-width: 768px) {
+  #call-to-action-button {
+    padding: 10px;
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+  #autocomplete {
+    width: 250px;
+    max-width: 100%;
+    padding: 15px;
+  }
+}
+
     </style>
   </head>
 
@@ -104,7 +120,7 @@ html, body {
         <div id="address-form">
           <h1>How much is your SPOT worth?</h1>
           <div id="locationField">
-            <input id="autocomplete" placeholder="Enter your address to find out how much your SPOT could earn you every month!" onFocus="geolocate()" type="text"></input>
+            <input id="autocomplete" placeholder="Enter your address..." onFocus="geolocate()" type="text"></input>
           </div>
         </div>
         <div id="spot-results">
