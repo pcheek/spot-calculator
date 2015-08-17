@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How much is your SPOT worth?</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato%3A300%2C400%2C700%2C300italic%2C400italic%2C700italic&#038;ver=4.2.4" type="text/css" media="all" />
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato%3A300%2C400%2C700%2C300italic%2C400italic%2C700italic&#038;ver=4.2.4" type="text/css" media="all" />
+    <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=Lato%3A300%2C400%2C700%2C300italic%2C400italic%2C700italic&#038;ver=4.2.4" type="text/css" media="all" />
+
+    <style type="text/css">
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  color: #FFFFFF;
+}
+
+* {
+  font-family: Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+#map {
+  height: 100%;
+}
+
+.content-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: table;
+  width: 100%;
+  height: 100%;
+  background: #21EEA8;
+  background: rgba(33, 238, 168, 0.9);
+}
+
+.content {
+  width: 50%;
+  margin: 0 auto;
+  display: table-cell;
+  text-align: center;
+  vertical-align: middle;
+  -webkit-border-radius: 50px;
+  -moz-border-radius: 50px;
+  border-radius: 50px;
+  text-shadow: 0px 1px 0px rgba(0, 0, 0, 0.25);
+}
+
+#address-form {}
+
+#spot-results {
+  display: none;
+}
+
+#autocomplete {
+  width: 50%;
+  padding: 25px;
+  border: none;
+  -webkit-border-radius: 50px;
+  -moz-border-radius: 50px;
+  border-radius: 50px;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+#monthly-revenue {
+  font-size: 48px;
+}
+
+#call-to-action-button {
+  width: 50%;
+  padding: 20px;
+  padding-left: 50px;
+  padding-right: 50px;
+  text-align: center;
+  text-transform: uppercase;
+  text-decoration: none;
+  letter-spacing: 1px;
+  background: #FFFFFF;
+  -webkit-border-radius: 50px;
+  -moz-border-radius: 50px;
+  border-radius: 50px;
+  text-shadow: none;
+  color: rgba(33, 238, 168, 1);
+}
+
+  #call-to-action-button:hover {
+    background: rgba(255, 255, 255, 0.85);
+  }
+
+    </style>
+  </head>
+
+  <body>
+
+    <div id="map"></div>
+
+    <div class="content-wrapper">
+      <div class="content">
+        <div id="address-form">
+          <h1>How much is your SPOT worth?</h1>
+          <div id="locationField">
+            <input id="autocomplete" placeholder="Enter your address to find out how much your SPOT could earn you every month!" onFocus="geolocate()" type="text"></input>
+          </div>
+        </div>
+        <div id="spot-results">
+          <h2>Your SPOT could earn you up to:</h2>
+          <h1>$<span id="monthly-revenue">XXX.XX</span> <em>monthly</em></h1>
+          <br/>
+          <a href="http://parkeasier.com" id="call-to-action-button">Start earning today!</a>
+        </div>
+      </div>
+    </div>
+
+    <table id="address" style="display: none;">
+      <tr>
+        <td class="label">Street address</td>
+        <td class="slimField"><input class="field" id="street_number" disabled="true"></input></td>
+        <td class="wideField" colspan="2"><input class="field" id="route" disabled="true"></input></td>
+      </tr>
+      <tr>
+        <td class="label">City</td>
+        <td class="wideField" colspan="3"><input class="field" id="locality" disabled="true"></input></td>
+      </tr>
+      <tr>
+        <td class="label">State</td>
+        <td class="slimField"><input class="field" id="administrative_area_level_1" disabled="true"></input></td>
+        <td class="label">Zip code</td>
+        <td class="wideField"><input class="field" id="postal_code" disabled="true"></input></td>
+      </tr>
+      <tr>
+        <td class="label">Country</td>
+        <td class="wideField" colspan="3"><input class="field" id="country" disabled="true"></input></td>
+      </tr>
+    </table>
+
+    <script>
+
+function xmlToJson(xml) {
+	var obj = {};
+
+	if (xml.nodeType == 1) {
+		if (xml.attributes.length > 0) {
+		obj["@attributes"] = {};
+			for (var j = 0; j < xml.attributes.length; j++) {
+				var attribute = xml.attributes.item(j);
+				obj["@attributes"][attribute.nodeName] = attribute.nodeValue;
+			}
+		}
+	} else if (xml.nodeType == 3) {
+		obj = xml.nodeValue;
+	}
+
+	if (xml.hasChildNodes()) {
+		for(var i = 0; i < xml.childNodes.length; i++) {
+			var item = xml.childNodes.item(i);
+			var nodeName = item.nodeName;
+			if (typeof(obj[nodeName]) == "undefined") {
+				obj[nodeName] = xmlToJson(item);
+			} else {
+				if (typeof(obj[nodeName].push) == "undefined") {
+					var old = obj[nodeName];
+					obj[nodeName] = [];
+					obj[nodeName].push(old);
+				}
+				obj[nodeName].push(xmlToJson(item));
+			}
+		}
+	}
+	return obj;
+};
+
+var placeSearch, autocomplete;
+var componentForm = {
+  street_number: 'short_name',
+  route: 'long_name',
+  locality: 'long_name',
+  administrative_area_level_1: 'short_name',
+  country: 'long_name',
+  postal_code: 'short_name'
+};
+
+function initAutocomplete() {
+  autocomplete = new google.maps.places.Autocomplete(
+    (document.getElementById('autocomplete')),
+    {types: ['geocode']});
+  autocomplete.addListener('place_changed', fillInAddress);
+  autocomplete.addListener('place_changed', geocodeAddress);
+}
+
+function fillInAddress() {
+  var place = autocomplete.getPlace();
+  for (var component in componentForm) {
+    document.getElementById(component).value = '';
+    document.getElementById(component).disabled = false;
+  }
+  for (var i = 0; i < place.address_components.length; i++) {
+    var addressType = place.address_components[i].types[0];
+    if (componentForm[addressType]) {
+      var val = place.address_components[i][componentForm[addressType]];
+      document.getElementById(addressType).value = val;
+    }
+  }
+}
+
+function geolocate() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+      var geolocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+      var circle = new google.maps.Circle({
+        center: geolocation,
+        radius: position.coords.accuracy
+      });
+      autocomplete.setBounds(circle.getBounds());
+    });
+  }
+}
+
+function geocodeAddress() {
+  var map = new google.maps.Map(document.getElementById('map'), {
+    zoom: 11,
+    center: {lat: 42.3601, lng: -71.0589},
+    disableDefaultUI: true
+  });
+  var geocoder = new google.maps.Geocoder();
+  var address = document.getElementById('autocomplete').value;
+  geocoder.geocode({'address': address}, function(results, status) {
+    if (status === google.maps.GeocoderStatus.OK) {
+      map.setCenter(results[0].geometry.location);
+      var marker = new google.maps.Marker({
+        map: map,
+        position: results[0].geometry.location
+      });
+      parseNeighborhoods(results[0].geometry.location, map);
+    } else {
+      alert('Geocode was not successful for the following reason: ' + status);
+    }
+  });
+}
+
+function checkLocationAgainstBoundries(location, neighborhoodData, map) {
+  var neighborhood;
+  var boundaryCoordinates;
+  var newPolygon = [];
+  for(var i=0; i < neighborhoodData.length; i++) {
+    newPolygon[i] = new google.maps.Polygon({
+      paths: neighborhoodData[i].coordinates,
+      strokeColor: '#FF0000',
+      strokeOpacity: 0.8,
+      strokeWeight: 3,
+      fillColor: '#FF0000',
+      fillOpacity: 0.35
+    });
+    newPolygon[i].setMap(map);
+    if(google.maps.geometry.poly.containsLocation(location, neighborhoodData[i].boundary)) {
+      neighborhood = neighborhoodData[i];
+    }
+  }
+
+  if(!neighborhood) {
+    neighborhood = {
+      name: "Boston",
+      spotData: {
+        "hourly": {
+          "low": 0.50,
+          "high": 1.00
+        },
+        "daily": {
+          "low": 2.75,
+          "high": 5.50
+        },
+        "weekly": {
+          "low": 20.00,
+          "high": 35.00
+        },
+        "monthly": {
+          "low": 75.00,
+          "high": 100.00
+        }
+      }
+    };
+  }
+
+  console.log(neighborhood);
+
+  document.getElementById('monthly-revenue').innerHTML = neighborhood.spotData.monthly.high.toFixed(0).toString();
+  document.getElementById('address-form').style.display = "none";
+  document.getElementById('spot-results').style.display = "block";
+}
+
+function parseNeighborhoods(location, map) {
+  var url = "data/boston.xml";
+  var xhr = (window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP"));
+  xhr.onreadystatechange = XHRhandler;
+  xhr.open("GET", url, true);
+  xhr.send(null);
+
+  function XHRhandler() {
+  	if (xhr.readyState == 4) {
+  		var obj = xmlToJson(xhr.responseXML);
+      var spotData = [];
+      spotData["Back Bay"] = {
+        "hourly": {
+          "low": 2.25,
+          "high": 4.00
+        },
+        "daily": {
+          "low": 12.00,
+          "high": 19.00
+        },
+        "weekly": {
+          "low": 75.00,
+          "high": 90.00
+        },
+        "monthly": {
+          "low": 285.00,
+          "high": 325.00
+        }
+      };
+
+      spotData["Fenway"] = {
+        "hourly": {
+          "low": 2.00,
+          "high": 3.00
+        },
+        "daily": {
+          "low": 10.50,
+          "high": 15.00
+        },
+        "weekly": {
+          "low": 55.00,
+          "high": 70.00
+        },
+        "monthly": {
+          "low": 225.00,
+          "high": 265.00
+        }
+      };
+
+      spotData["South End"] = {
+        "hourly": {
+          "low": 2.00,
+          "high": 3.50
+        },
+        "daily": {
+          "low": 11.00,
+          "high": 15.50
+        },
+        "weekly": {
+          "low": 55.00,
+          "high": 75.00
+        },
+        "monthly": {
+          "low": 235.00,
+          "high": 275.00
+        }
+      };
+
+      spotData["Allston"] = {
+        "hourly": {
+          "low": 0.70,
+          "high": 1.50
+        },
+        "daily": {
+          "low": 4.00,
+          "high": 7.50
+        },
+        "weekly": {
+          "low": 30.00,
+          "high": 40.00
+        },
+        "monthly": {
+          "low": 100.00,
+          "high": 145.00
+        }
+      };
+
+      spotData["Brighton"] = {
+        "hourly": {
+          "low": 0.70,
+          "high": 1.75
+        },
+        "daily": {
+          "low": 4.00,
+          "high": 7.50
+        },
+        "weekly": {
+          "low": 30.00,
+          "high": 45.00
+        },
+        "monthly": {
+          "low": 105.00,
+          "high": 150.00
+        }
+      };
+
+      spotData["Brookline"] = {
+        "hourly": {
+          "low": 1.00,
+          "high": 2.00
+        },
+        "daily": {
+          "low": 6.50,
+          "high": 10.50
+        },
+        "weekly": {
+          "low": 40.00,
+          "high": 55.00
+        },
+        "monthly": {
+          "low": 155.00,
+          "high": 200.00
+        }
+      };
+
+      spotData["Cambridge"] = {
+        "hourly": {
+          "low": 1.50,
+          "high": 2.75
+        },
+        "daily": {
+          "low": 8.00,
+          "high": 12.00
+        },
+        "weekly": {
+          "low": 45.00,
+          "high": 60.00
+        },
+        "monthly": {
+          "low": 175.00,
+          "high": 230.00
+        }
+      };
+
+      spotData["Somerville"] = {
+        "hourly": {
+          "low": 1.00,
+          "high": 2.00
+        },
+        "daily": {
+          "low": 6.00,
+          "high": 9.00
+        },
+        "weekly": {
+          "low": 40.00,
+          "high": 50.00
+        },
+        "monthly": {
+          "low": 145.00,
+          "high": 190.00
+        }
+      };
+
+      spotData["Medford"] = {
+        "hourly": {
+          "low": 0.50,
+          "high": 1.25
+        },
+        "daily": {
+          "low": 3.75,
+          "high": 7.00
+        },
+        "weekly": {
+          "low": 30.00,
+          "high": 40.00
+        },
+        "monthly": {
+          "low": 80.00,
+          "high": 125.00
+        }
+      };
+
+      spotData["Malden"] = {
+        "hourly": {
+          "low": 0.50,
+          "high": 1.25
+        },
+        "daily": {
+          "low": 3.75,
+          "high": 7.00
+        },
+        "weekly": {
+          "low": 30.00,
+          "high": 40.00
+        },
+        "monthly": {
+          "low": 80.00,
+          "high": 125.00
+        }
+      };
+
+      spotData["South Boston"] = {
+        "hourly": {
+          "low": 2.00,
+          "high": 3.25
+        },
+        "daily": {
+          "low": 7.50,
+          "high": 9.25
+        },
+        "weekly": {
+          "low": 65.00,
+          "high": 80.00
+        },
+        "monthly": {
+          "low": 245.00,
+          "high": 315.00
+        }
+      };
+
+      spotData["Dorchester"] = {
+        "hourly": {
+          "low": 1.25,
+          "high": 2.00
+        },
+        "daily": {
+          "low": 5.50,
+          "high": 8.50
+        },
+        "weekly": {
+          "low": 35.00,
+          "high": 50.00
+        },
+        "monthly": {
+          "low": 135.00,
+          "high": 185.00
+        }
+      };
+
+      spotData["Quincy"] = {
+        "hourly": {
+          "low": 0.75,
+          "high": 1.75
+        },
+        "daily": {
+          "low": 4.00,
+          "high": 7.50
+        },
+        "weekly": {
+          "low": 30.00,
+          "high": 40.00
+        },
+        "monthly": {
+          "low": 90.00,
+          "high": 125.00
+        }
+      };
+
+      spotData["Watertown"] = {
+        "hourly": {
+          "low": 0.75,
+          "high": 1.50
+        },
+        "daily": {
+          "low": 3.00,
+          "high": 6.00
+        },
+        "weekly": {
+          "low": 25.00,
+          "high": 35.00
+        },
+        "monthly": {
+          "low": 85.00,
+          "high": 110.00
+        }
+      };
+
+      var neighborhoods = obj.kml.Document.Folder.Placemark;
+      var neighborhoodBoundaries = [];
+      var neighborhoodData = [];
+      var neighborhoodName;
+      var neighborhoodCoordinatesString;
+      var neighborhoodCoordinatesSegments;
+      var neighborhoodCoordinatesSegmentsPartial;
+      var neighborhoodCoordinates;
+      for(var i=0; i < neighborhoods.length; i++) {
+        neighborhoodName = neighborhoods[i].name['#text'];
+        neighborhoodCoordinatesString = neighborhoods[i].Polygon.outerBoundaryIs.LinearRing.coordinates['#text'];
+        neighborhoodCoordinatesSegments = neighborhoodCoordinatesString.split(" ");
+        neighborhoodCoordinates = [];
+        for(var x=0; x < neighborhoodCoordinatesSegments.length; x++) {
+          neighborhoodCoordinatesSegmentsPartial = [];
+          neighborhoodCoordinatesSegmentsPartial = neighborhoodCoordinatesSegments[x].split(",");
+          neighborhoodCoordinates.push({
+            lng: parseFloat(neighborhoodCoordinatesSegmentsPartial[0]),
+            lat: parseFloat(neighborhoodCoordinatesSegmentsPartial[1])
+          });
+        }
+        neighborhoodData.push({
+          name: neighborhoodName,
+          spotData: spotData[neighborhoodName],
+          coordinates: neighborhoodCoordinates,
+          boundary: new google.maps.Polygon({paths: neighborhoodCoordinates})
+        });
+        neighborhoodBoundaries.push(new google.maps.Polygon({paths: neighborhoodCoordinates}));
+      }
+      checkLocationAgainstBoundries(location, neighborhoodData, map)
+      xhr = null;
+    }
+
+  }
+}
+
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?signed_in=true&libraries=places,drawing,geometry&callback=initAutocomplete" async defer></script>
+  </body>
+</html>
