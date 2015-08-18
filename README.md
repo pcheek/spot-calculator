@@ -11,7 +11,7 @@ No installation necessary!
 
 ## Usage
 
-To install, simply open index.html file in a web browser.
+To use, simply open index.html file in a web browser.
 
 ## Contributing
 
